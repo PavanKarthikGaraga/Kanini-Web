@@ -1,8 +1,7 @@
-import { neon } from "@neondatabase/serverless";
+import { rawQuery, getTenantSchema } from "@/app/lib/db";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-    const sql = neon(process.env.DATABASE_URL!);
     const data = await req.json();
 
     const {
@@ -20,78 +19,75 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "org_id is required" }, { status: 400 });
     }
 
-    // --- Mock Risk Engine ---
-    let riskLevel = "Low";
-    const hr = parseInt(heart_rate);
-    const temp = parseFloat(temperature);
-    const [systolic] = blood_pressure.split("/").map((v: string) => parseInt(v));
-
-    if (temp > 102 || hr > 110 || systolic > 160 || systolic < 90) {
-        riskLevel = "High";
-    } else if (temp > 100 || hr > 90 || systolic > 140 || systolic < 100) {
-        riskLevel = "Medium";
+    // --- Call Triage Service ---
+    let triageResult;
+    try {
+        const host = req.headers.get("host") || "localhost:3000";
+        const protocol = host.startsWith("localhost") ? "http" : "https";
+        const triageRes = await fetch(`${protocol}://${host}/api/triage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ age: parseInt(age), gender, symptoms, blood_pressure, heart_rate: parseInt(heart_rate), temperature: parseFloat(temperature), pre_existing_conditions }),
+        });
+        const triageData = await triageRes.json();
+        if (!triageRes.ok) {
+            return NextResponse.json({ error: triageData.error || "Triage service failed." }, { status: 500 });
+        }
+        triageResult = triageData.result;
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Triage service unavailable";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    const confidenceScore = (Math.random() * (0.98 - 0.85) + 0.85).toFixed(2);
-
-    let recommendedDept = "General Outpatient";
-    if (riskLevel === "High") recommendedDept = "Emergency (ER)";
-    else if (riskLevel === "Medium") recommendedDept = "Internal Medicine";
-
     const displayId = `PAT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const schema = getTenantSchema(org_id);
 
     try {
-        const result = await sql`
-            INSERT INTO patients (
-                org_id,
-                patient_id_display,
-                age,
-                gender,
-                symptoms,
-                blood_pressure,
-                heart_rate,
-                temperature,
-                pre_existing_conditions,
-                risk_level,
-                confidence_score,
-                recommended_department,
-                status
+        const result = await rawQuery(`
+            INSERT INTO ${schema}.patients (
+                org_id, patient_id_display, age, gender, symptoms,
+                blood_pressure, heart_rate, temperature, pre_existing_conditions,
+                risk_level, confidence_score, recommended_department,
+                triage_notes, urgency_score, status
             ) VALUES (
-                ${org_id},
-                ${displayId},
-                ${age},
-                ${gender},
-                ${symptoms},
-                ${blood_pressure},
-                ${heart_rate},
-                ${temperature},
-                ${pre_existing_conditions},
-                ${riskLevel},
-                ${confidenceScore},
-                ${recommendedDept},
-                'Pending'
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'Pending'
             )
             RETURNING id
-        `;
+        `, [
+            org_id, displayId, age, gender, symptoms,
+            blood_pressure, heart_rate, temperature, pre_existing_conditions,
+            triageResult.risk_level, triageResult.confidence_score, triageResult.recommended_department,
+            triageResult.triage_notes, triageResult.urgency_score
+        ]);
 
-        return NextResponse.json({ id: result[0].id, displayId });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({
+            id: result[0].id,
+            displayId,
+            triage: triageResult,
+        });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
 export async function GET(req: Request) {
-    const sql = neon(process.env.DATABASE_URL!);
     const orgId = req.headers.get("x-org-id");
 
     if (!orgId) {
         return NextResponse.json({ error: "x-org-id header is required" }, { status: 400 });
     }
 
+    const schema = getTenantSchema(orgId);
+
     try {
-        const patients = await sql`SELECT * FROM patients WHERE org_id = ${orgId} ORDER BY created_at DESC`;
+        const patients = await rawQuery(
+            `SELECT * FROM ${schema}.patients WHERE org_id = $1 ORDER BY created_at DESC`,
+            [orgId]
+        );
         return NextResponse.json(patients);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

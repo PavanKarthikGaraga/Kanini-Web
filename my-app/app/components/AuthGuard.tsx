@@ -8,7 +8,7 @@ export interface KairoUser {
     fullName: string;
     email: string;
     role: string;
-    orgId: string;
+    orgId: string | null;
     orgName: string;
 }
 
@@ -44,8 +44,50 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         }
         try {
             const user = JSON.parse(raw);
-            if (!user.id || !user.orgId) {
+            if (!user.id) {
                 clearSessionAndRedirect();
+            } else {
+                setChecked(true);
+            }
+        } catch {
+            clearSessionAndRedirect();
+        }
+    }, [router]);
+
+    if (!checked) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <span className="loading loading-spinner loading-lg text-primary"></span>
+            </div>
+        );
+    }
+
+    return <>{children}</>;
+}
+
+/**
+ * Auth guard specifically for superadmin pages.
+ * Redirects non-superadmin users to /dashboard.
+ */
+export function SuperAdminGuard({ children }: { children: React.ReactNode }) {
+    const router = useRouter();
+    const [checked, setChecked] = useState(false);
+
+    useEffect(() => {
+        const clearSessionAndRedirect = () => {
+            document.cookie = "kairo_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            router.replace("/auth/login");
+        };
+
+        const raw = localStorage.getItem("kairo_user");
+        if (!raw) {
+            clearSessionAndRedirect();
+            return;
+        }
+        try {
+            const user = JSON.parse(raw);
+            if (!user.id || user.role !== "superadmin") {
+                router.replace("/dashboard");
             } else {
                 setChecked(true);
             }

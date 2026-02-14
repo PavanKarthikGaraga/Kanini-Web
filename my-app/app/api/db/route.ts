@@ -1,9 +1,10 @@
-import { neon } from "@neondatabase/serverless";
+import { getSQL } from "@/app/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-    const sql = neon(process.env.DATABASE_URL!);
+    const sql = getSQL();
 
+    // Organizations table (shared across all tenants)
     await sql`
         CREATE TABLE IF NOT EXISTS organizations (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -19,17 +20,24 @@ export async function GET() {
         )
     `;
 
+    // Superadmins table (platform-level admins)
     await sql`
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS superadmins (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-            full_name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'admin',
+            full_name TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT NOW()
         )
     `;
 
-    return NextResponse.json({ message: "Tables created successfully" });
+    // User directory for email → org_id lookup (avoids scanning all tenant schemas)
+    await sql`
+        CREATE TABLE IF NOT EXISTS user_directory (
+            email TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE
+        )
+    `;
+
+    return NextResponse.json({ message: "Public schema tables created successfully (organizations, superadmins, user_directory)" });
 }

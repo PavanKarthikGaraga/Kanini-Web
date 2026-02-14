@@ -43,8 +43,7 @@ export default function AddPatientPage() {
             const data = await res.json();
 
             if (res.ok) {
-                alert(`Patient registered successfully! ID: ${data.displayId}`);
-                router.push("/dashboard/patients");
+                router.push(`/dashboard/patient-result/${data.id}`);
             } else {
                 alert(data.error || "Something went wrong");
             }
