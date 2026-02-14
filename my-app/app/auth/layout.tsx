@@ -1,12 +1,18 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 export default function AuthLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen relative">
+
             {/* Left Panel - Branding */}
-            <div className="hidden lg:flex flex-col items-center justify-center bg-secondary text-secondary-content p-12 relative overflow-hidden">
+            <div className="hidden lg:flex flex-col items-center justify-center bg-black text-white p-12 relative overflow-hidden">
                 {/* Decorative circles */}
                 <div className="absolute top-20 -left-20 w-64 h-64 rounded-full border border-secondary-content/5"></div>
                 <div className="absolute bottom-10 -right-10 w-48 h-48 rounded-full border border-secondary-content/5"></div>
