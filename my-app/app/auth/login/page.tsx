@@ -66,6 +66,7 @@ export default function LoginPage() {
             }
 
             localStorage.setItem("kairo_user", JSON.stringify(data.user));
+            document.cookie = "kairo_session=true; path=/;";
             router.push("/dashboard");
         } catch {
             setError("Network error. Please try again.");
