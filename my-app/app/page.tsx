@@ -453,15 +453,20 @@ function FinalCTA() {
 
 function LandingFooter() {
     return (
-        <footer className="border-t border-base-300/50 py-5 px-6">
-            <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-base-content/30">
-                <span className="font-semibold text-base-content/50">Kairo</span>
-                <div className="flex items-center gap-4">
-                    <a href="#" className="hover:text-base-content/50 transition-colors">Privacy</a>
-                    <a href="#" className="hover:text-base-content/50 transition-colors">Terms</a>
-                    <a href="#" className="hover:text-base-content/50 transition-colors">Security</a>
+        <footer className="border-t border-base-300/50 py-8 px-6">
+            <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex flex-col items-center md:items-start gap-2">
+                    <span className="font-bold text-base-content/60">Kairo</span>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/50">Hackathon Prototype 2026</p>
                 </div>
-                <span>&copy; 2026 Kairo Health &middot; HIPAA Compliant</span>
+                <div className="flex items-center gap-6 text-[11px] text-base-content/40">
+                    <a href="#" className="hover:text-base-content transition-colors">Privacy</a>
+                    <a href="#" className="hover:text-base-content transition-colors">Terms</a>
+                    <a href="#" className="hover:text-base-content transition-colors">Security</a>
+                </div>
+                <div className="text-[11px] text-base-content/30 text-center md:text-right">
+                    <span>&copy; 2026 Kairo Health &middot; HIPAA Compliant</span>
+                </div>
             </div>
         </footer>
     );

@@ -12,7 +12,7 @@
   --color-base-content: oklch(15% 0.02 260);
   --color-primary: oklch(15% 0.02 260);
   --color-primary-content: oklch(100% 0 0);
-  --color-secondary: oklch(55% 0.18 260);
+  --color-secondary: oklch(0% 0 0);
   --color-secondary-content: oklch(100% 0 0);
   --color-accent: oklch(20% 0.02 260);
   --color-accent-content: oklch(97% 0.003 260);
@@ -47,7 +47,7 @@
   --color-base-content: oklch(90% 0.005 260);
   --color-primary: oklch(90% 0.005 260);
   --color-primary-content: oklch(16% 0.014 260);
-  --color-secondary: oklch(65% 0.18 260);
+  --color-secondary: oklch(0% 0 0);
   --color-secondary-content: oklch(100% 0 0);
   --color-accent: oklch(85% 0.005 260);
   --color-accent-content: oklch(16% 0.014 260);
@@ -78,6 +78,7 @@
     opacity: 0;
     transform: translateY(24px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -85,8 +86,13 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-in-left {
@@ -94,6 +100,7 @@
     opacity: 0;
     transform: translateX(-32px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -105,6 +112,7 @@
     opacity: 0;
     transform: translateX(32px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -116,6 +124,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -123,13 +132,25 @@
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes count-bar {
-  from { width: 0%; }
-  to { width: var(--bar-width); }
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: var(--bar-width);
+  }
 }
 
 /* Scroll-reveal base state */
@@ -137,7 +158,7 @@
   opacity: 0;
   transform: translateY(24px);
   transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal.visible {
@@ -149,7 +170,7 @@
   opacity: 0;
   transform: translateX(-32px);
   transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-left.visible {
@@ -161,7 +182,7 @@
   opacity: 0;
   transform: translateX(32px);
   transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-right.visible {
@@ -173,7 +194,7 @@
   opacity: 0;
   transform: scale(0.95);
   transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-scale.visible {
@@ -182,11 +203,25 @@
 }
 
 /* Stagger delays */
-.delay-1 { transition-delay: 0.1s; }
-.delay-2 { transition-delay: 0.2s; }
-.delay-3 { transition-delay: 0.3s; }
-.delay-4 { transition-delay: 0.4s; }
-.delay-5 { transition-delay: 0.5s; }
+.delay-1 {
+  transition-delay: 0.1s;
+}
+
+.delay-2 {
+  transition-delay: 0.2s;
+}
+
+.delay-3 {
+  transition-delay: 0.3s;
+}
+
+.delay-4 {
+  transition-delay: 0.4s;
+}
+
+.delay-5 {
+  transition-delay: 0.5s;
+}
 
 /* Hero entrance animations */
 .hero-enter {
@@ -224,10 +259,21 @@
   animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.triage-row:nth-child(1) { animation-delay: 0.5s; }
-.triage-row:nth-child(2) { animation-delay: 0.65s; }
-.triage-row:nth-child(3) { animation-delay: 0.8s; }
-.triage-row:nth-child(4) { animation-delay: 0.95s; }
+.triage-row:nth-child(1) {
+  animation-delay: 0.5s;
+}
+
+.triage-row:nth-child(2) {
+  animation-delay: 0.65s;
+}
+
+.triage-row:nth-child(3) {
+  animation-delay: 0.8s;
+}
+
+.triage-row:nth-child(4) {
+  animation-delay: 0.95s;
+}
 
 /* Navbar slide down */
 .nav-enter {

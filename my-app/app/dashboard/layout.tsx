@@ -18,7 +18,6 @@ export default function DashboardLayout({
                     <main className="flex-1 p-6 bg-base-200">
                         {children}
                     </main>
-                    <Footer />
                 </div>
 
                 <Sidebar />
