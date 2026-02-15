@@ -9,6 +9,15 @@ interface QueuePatient {
     position: number;
 }
 
+interface DbPatient {
+    id: string;
+    patient_id_display: string;
+    risk_level: string;
+    urgency_score: number;
+    recommended_department: string;
+    status: string;
+}
+
 interface DepartmentData {
     name: string;
     patients: number;
@@ -27,42 +36,105 @@ export default function DepartmentsPage() {
     const [departments, setDepartments] = useState<DepartmentData[]>([]);
     const [loading, setLoading] = useState(true);
     const [mlConnected, setMlConnected] = useState(false);
+    const [dataSource, setDataSource] = useState<"ml" | "db">("ml");
+
+    const buildFromDb = useCallback((patients: DbPatient[]): DepartmentData[] => {
+        const deptMap: Record<string, DbPatient[]> = {};
+        for (const p of patients) {
+            const dept = p.recommended_department || "General Medicine";
+            if (!deptMap[dept]) deptMap[dept] = [];
+            deptMap[dept].push(p);
+        }
+
+        // Include all known departments + any new ones from DB
+        const allNames = new Set([...ALL_DEPARTMENTS, ...Object.keys(deptMap)]);
+
+        return Array.from(allNames).map((name) => {
+            const pts = deptMap[name] || [];
+            return {
+                name,
+                patients: pts.length,
+                highRisk: pts.filter((p) => p.risk_level === "High").length,
+                avgPriority: pts.length > 0
+                    ? pts.reduce((sum, p) => sum + (p.urgency_score || 0), 0) / pts.length
+                    : 0,
+                queuePatients: pts.map((p, i) => ({
+                    patient_id: p.patient_id_display,
+                    priority_score: p.urgency_score || 0,
+                    risk_level: p.risk_level,
+                    position: i + 1,
+                })),
+            };
+        }).sort((a, b) => b.patients - a.patients);
+    }, []);
 
     const fetchQueues = useCallback(async () => {
+        const raw = localStorage.getItem("kairo_user");
+        const user = raw ? JSON.parse(raw) : null;
+        const orgId = user?.orgId;
+
+        // Try ML backend first
         try {
             const res = await fetch("/api/queue");
             if (res.ok) {
                 const summary = await res.json();
-                setMlConnected(true);
-
-                const depts: DepartmentData[] = ALL_DEPARTMENTS.map((name) => {
-                    const queue = summary[name];
-                    const patients = queue?.patients || [];
-                    return {
-                        name,
-                        patients: queue?.size || 0,
-                        highRisk: patients.filter((p: QueuePatient) => p.risk_level === "High").length,
-                        avgPriority: patients.length > 0
-                            ? patients.reduce((sum: number, p: QueuePatient) => sum + p.priority_score, 0) / patients.length
-                            : 0,
-                        queuePatients: patients,
-                    };
+                // Check if ML actually has data
+                const hasData = Object.values(summary).some((q: unknown) => {
+                    const queue = q as { size?: number };
+                    return queue?.size && queue.size > 0;
                 });
-                setDepartments(depts);
-            } else {
-                setMlConnected(false);
-                setDepartments(ALL_DEPARTMENTS.map((name) => ({
-                    name, patients: 0, highRisk: 0, avgPriority: 0, queuePatients: [],
-                })));
+
+                if (hasData) {
+                    setMlConnected(true);
+                    setDataSource("ml");
+                    const depts: DepartmentData[] = ALL_DEPARTMENTS.map((name) => {
+                        const queue = summary[name];
+                        const patients = queue?.patients || [];
+                        return {
+                            name,
+                            patients: queue?.size || 0,
+                            highRisk: patients.filter((p: QueuePatient) => p.risk_level === "High").length,
+                            avgPriority: patients.length > 0
+                                ? patients.reduce((sum: number, p: QueuePatient) => sum + p.priority_score, 0) / patients.length
+                                : 0,
+                            queuePatients: patients,
+                        };
+                    });
+                    setDepartments(depts);
+                    setLoading(false);
+                    return;
+                }
             }
         } catch {
-            setMlConnected(false);
-            setDepartments(ALL_DEPARTMENTS.map((name) => ({
-                name, patients: 0, highRisk: 0, avgPriority: 0, queuePatients: [],
-            })));
+            // ML offline, fall through to DB
         }
+
+        // Fallback: fetch from database
+        setMlConnected(false);
+        if (orgId) {
+            try {
+                const dbRes = await fetch("/api/patients", { headers: { "x-org-id": orgId } });
+                if (dbRes.ok) {
+                    const patients: DbPatient[] = await dbRes.json();
+                    if (Array.isArray(patients)) {
+                        setDataSource("db");
+                        setDepartments(buildFromDb(patients));
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch {
+                // DB also failed
+            }
+        }
+
+        // Both failed
+        setDataSource("db");
+        setDepartments(ALL_DEPARTMENTS.map((name) => ({
+            name, patients: 0, highRisk: 0, avgPriority: 0, queuePatients: [],
+        })));
         setLoading(false);
-    }, []);
+    }, [buildFromDb]);
 
     useEffect(() => {
         fetchQueues();
@@ -87,22 +159,24 @@ export default function DepartmentsPage() {
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Departments</h1>
-                    <p className="text-sm text-base-content/40 mt-1">Live department queues from ML triage engine</p>
+                    <p className="text-sm text-base-content/40 mt-1">
+                        {dataSource === "ml" ? "Live department queues from ML triage engine" : "Department data from patient database"}
+                    </p>
                 </div>
-                <div className={`flex items-center gap-2 text-xs ${mlConnected ? "text-success" : "text-error"}`}>
-                    <span className={`w-2 h-2 rounded-full ${mlConnected ? "bg-success animate-pulse" : "bg-error"}`}></span>
-                    {mlConnected ? "ML Connected" : "ML Offline"}
+                <div className={`flex items-center gap-2 text-xs ${mlConnected ? "text-success" : "text-base-content/40"}`}>
+                    <span className={`w-2 h-2 rounded-full ${mlConnected ? "bg-success animate-pulse" : "bg-base-content/20"}`}></span>
+                    {mlConnected ? "ML Connected" : "Using Database"}
                 </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 <div className="bg-base-100 rounded-lg border border-base-300 p-4">
-                    <p className="text-2xl font-bold tracking-tight">{ALL_DEPARTMENTS.length}</p>
+                    <p className="text-2xl font-bold tracking-tight">{departments.length}</p>
                     <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Departments</p>
                 </div>
                 <div className="bg-base-100 rounded-lg border border-base-300 p-4">
                     <p className="text-2xl font-bold tracking-tight">{totalPatients}</p>
-                    <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Total in Queues</p>
+                    <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Total Patients</p>
                 </div>
                 <div className="bg-base-100 rounded-lg border border-base-300 p-4">
                     <p className="text-2xl font-bold tracking-tight text-primary">{activeDepts}</p>

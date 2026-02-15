@@ -100,6 +100,22 @@ export async function createTenantSchema(orgId: string) {
             risk_probabilities JSONB,
             dept_probabilities JSONB,
             status TEXT DEFAULT 'Pending',
+            assigned_doctor_id UUID,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    `);
+
+    await rawExec(`
+        CREATE TABLE IF NOT EXISTS ${schema}.doctors (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            org_id UUID NOT NULL,
+            full_name TEXT NOT NULL,
+            specialization TEXT NOT NULL,
+            department TEXT NOT NULL,
+            phone TEXT,
+            email TEXT,
+            status TEXT DEFAULT 'Available',
+            max_patients INTEGER DEFAULT 5,
             created_at TIMESTAMP DEFAULT NOW()
         )
     `);

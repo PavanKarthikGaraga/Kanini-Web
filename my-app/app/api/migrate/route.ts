@@ -40,6 +40,36 @@ export async function GET() {
                     // Column might already exist, that's fine
                 }
             }
+
+            // Add assigned_doctor_id to patients
+            try {
+                await rawExec(
+                    `ALTER TABLE ${schema}.patients ADD COLUMN IF NOT EXISTS assigned_doctor_id UUID`
+                );
+            } catch {
+                // Column might already exist
+            }
+
+            // Create doctors table
+            try {
+                await rawExec(`
+                    CREATE TABLE IF NOT EXISTS ${schema}.doctors (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        org_id UUID NOT NULL,
+                        full_name TEXT NOT NULL,
+                        specialization TEXT NOT NULL,
+                        department TEXT NOT NULL,
+                        phone TEXT,
+                        email TEXT,
+                        status TEXT DEFAULT 'Available',
+                        max_patients INTEGER DEFAULT 5,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                `);
+            } catch {
+                // Table might already exist
+            }
+
             results.push(`Migrated ${schema}`);
         }
 

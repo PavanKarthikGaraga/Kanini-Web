@@ -1,36 +1,39 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+interface Insight {
+    title: string;
+    description: string;
+    type: string;
+    time: string;
+}
+
+interface Stats {
+    avgConfidence: number;
+    assessments30d: number;
+    escalationCount: number;
+    insights: Insight[];
+    departmentStats: { name: string; patients: number }[];
+}
+
 export default function AIInsightsPage() {
-    const insights = [
-        {
-            title: "High-Risk Patient Surge",
-            description: "3 high-risk patients admitted in the last 2 hours. ER capacity is approaching 70%. Consider activating overflow protocol.",
-            type: "alert",
-            time: "12 min ago",
-        },
-        {
-            title: "Cardiology Department Trend",
-            description: "Cardiology admissions increased 35% this week compared to the monthly average. Recommend scheduling additional on-call cardiologist.",
-            type: "trend",
-            time: "1 hour ago",
-        },
-        {
-            title: "Triage Accuracy Report",
-            description: "AI triage model achieved 94.2% accuracy over the past 30 days. 2 cases were escalated from Medium to High risk by attending physicians.",
-            type: "report",
-            time: "3 hours ago",
-        },
-        {
-            title: "Wait Time Optimization",
-            description: "Average wait time reduced by 18% after implementing priority queue adjustments last week. General OPD shows the most improvement.",
-            type: "success",
-            time: "6 hours ago",
-        },
-        {
-            title: "Resource Allocation Suggestion",
-            description: "Based on current admission trends, Pulmonology may need 2 additional beds by end of week. Current utilization at 83%.",
-            type: "trend",
-            time: "1 day ago",
-        },
-    ];
+    const [stats, setStats] = useState<Stats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const raw = localStorage.getItem("kairo_user");
+        const user = raw ? JSON.parse(raw) : null;
+        const orgId = user?.orgId;
+
+        if (!orgId) { setLoading(false); return; }
+
+        fetch("/api/stats", { headers: { "x-org-id": orgId } })
+            .then((res) => res.json())
+            .then((data) => setStats(data))
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
 
     const typeStyles: Record<string, { bg: string; text: string; label: string }> = {
         alert: { bg: "bg-error/10", text: "text-error", label: "Alert" },
@@ -52,44 +55,73 @@ export default function AIInsightsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                <div className="bg-base-100 rounded-lg border border-base-300 p-4">
-                    <p className="text-2xl font-bold tracking-tight">94.2%</p>
-                    <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Triage Accuracy</p>
-                </div>
-                <div className="bg-base-100 rounded-lg border border-base-300 p-4">
-                    <p className="text-2xl font-bold tracking-tight">247</p>
-                    <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Assessments (30d)</p>
-                </div>
-                <div className="bg-base-100 rounded-lg border border-base-300 p-4">
-                    <p className="text-2xl font-bold tracking-tight text-success">-18%</p>
-                    <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Avg Wait Time</p>
-                </div>
-                <div className="bg-base-100 rounded-lg border border-base-300 p-4">
-                    <p className="text-2xl font-bold tracking-tight text-warning">2</p>
-                    <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Escalations</p>
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-                {insights.map((insight, i) => {
-                    const style = typeStyles[insight.type];
-                    return (
-                        <div key={i} className="bg-base-100 rounded-lg border border-base-300 p-5">
-                            <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                    <h3 className="font-semibold text-sm">{insight.title}</h3>
-                                    <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${style.bg} ${style.text}`}>
-                                        {style.label}
-                                    </span>
-                                </div>
-                                <span className="text-[10px] text-base-content/30 shrink-0 ml-4">{insight.time}</span>
-                            </div>
-                            <p className="text-sm text-base-content/50 leading-relaxed">{insight.description}</p>
+            {loading ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-base-100 rounded-lg border border-base-300 p-4 animate-pulse">
+                            <div className="h-7 bg-base-300 rounded w-16 mb-2"></div>
+                            <div className="h-3 bg-base-300 rounded w-24"></div>
                         </div>
-                    );
-                })}
-            </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div className="bg-base-100 rounded-lg border border-base-300 p-4">
+                        <p className="text-2xl font-bold tracking-tight">{stats?.avgConfidence ?? 0}%</p>
+                        <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Triage Accuracy</p>
+                    </div>
+                    <div className="bg-base-100 rounded-lg border border-base-300 p-4">
+                        <p className="text-2xl font-bold tracking-tight">{stats?.assessments30d ?? 0}</p>
+                        <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Assessments (30d)</p>
+                    </div>
+                    <div className="bg-base-100 rounded-lg border border-base-300 p-4">
+                        <p className="text-2xl font-bold tracking-tight">{stats?.departmentStats?.length ?? 0}</p>
+                        <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Active Departments</p>
+                    </div>
+                    <div className="bg-base-100 rounded-lg border border-base-300 p-4">
+                        <p className="text-2xl font-bold tracking-tight text-warning">{stats?.escalationCount ?? 0}</p>
+                        <p className="text-[10px] text-base-content/30 uppercase tracking-wider mt-1">Escalations</p>
+                    </div>
+                </div>
+            )}
+
+            {loading ? (
+                <div className="flex flex-col gap-3">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="bg-base-100 rounded-lg border border-base-300 p-5 animate-pulse">
+                            <div className="h-4 bg-base-300 rounded w-48 mb-3"></div>
+                            <div className="h-3 bg-base-300 rounded w-full"></div>
+                        </div>
+                    ))}
+                </div>
+            ) : !stats?.insights?.length ? (
+                <div className="bg-base-100 rounded-lg border border-base-300 p-8">
+                    <div className="flex flex-col items-center justify-center text-base-content/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        <p className="text-xs">No insights yet. Add patients to generate AI insights.</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col gap-3">
+                    {stats.insights.map((insight, i) => {
+                        const style = typeStyles[insight.type] || typeStyles.report;
+                        return (
+                            <div key={i} className="bg-base-100 rounded-lg border border-base-300 p-5">
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="font-semibold text-sm">{insight.title}</h3>
+                                        <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${style.bg} ${style.text}`}>
+                                            {style.label}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] text-base-content/30 shrink-0 ml-4">{insight.time}</span>
+                                </div>
+                                <p className="text-sm text-base-content/50 leading-relaxed">{insight.description}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

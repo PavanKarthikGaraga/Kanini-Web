@@ -44,8 +44,14 @@ export default function LiveQueuePage() {
             const mlRes = await fetch("/api/queue");
             if (mlRes.ok) {
                 const data = await mlRes.json();
-                setMlQueues(data);
-                setMlConnected(true);
+                // Validate that we got a department dictionary (not an error or single queue object)
+                if (data && typeof data === "object" && !data.error && !data.department) {
+                    setMlQueues(data);
+                    setMlConnected(true);
+                } else {
+                    setMlQueues({});
+                    setMlConnected(false);
+                }
             }
         } catch {
             setMlConnected(false);
@@ -75,7 +81,7 @@ export default function LiveQueuePage() {
     }, [fetchData]);
 
     const allQueuePatients = Object.entries(mlQueues).flatMap(([dept, q]) =>
-        q.patients.map((p) => ({ ...p, department: dept }))
+        (q?.patients || []).map((p) => ({ ...p, department: dept }))
     );
     const totalInQueue = allQueuePatients.length;
     const highRiskCount = allQueuePatients.filter((p) => p.risk_level === "High").length;
